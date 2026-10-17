@@ -1,0 +1,12 @@
+{
+    email {$ACME_EMAIL}
+    admin localhost:2019
+}
+
+{$BINGO_DOMAIN} {
+    header Strict-Transport-Security "max-age=31536000"
+    # Keep SSE unbuffered; its comments keep idle connections alive.
+    reverse_proxy 127.0.0.1:8000 {
+        flush_interval -1
+    }
+}

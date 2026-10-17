@@ -1,0 +1,12 @@
+data/
+backups/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+__pycache__/
+.cache/
+.env
+.DS_Store
+*.log
+docs/bingo-records*.json
