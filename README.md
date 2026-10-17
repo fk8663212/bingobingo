@@ -23,6 +23,35 @@ python3 app.py --db data/demo.sqlite3
 
 `demo` 再次執行會保護既有資料而拒絕覆寫，之後直接啟動即可。不要把正式資料庫刪掉或換成示範資料。
 
+## 同一個 Wi-Fi 的手機測試
+
+內網用來測試手機操作；正式活動仍部署到 Oracle Cloud ARM VPS。這裡使用獨立的 `data/lan-test.sqlite3`，測試領卡、抽號與得獎紀錄留在該檔案。
+
+先在專案資料夾初始化一次，依提示自行設定至少 12 字元的測試主持人密碼：
+
+```sh
+python3 manage.py --db data/lan-test.sqlite3 init --title '導生晚宴・內網測試' --tickets 150
+```
+
+之後每次測試只需啟動伺服器：
+
+```sh
+BINGO_PUBLIC_URL= python3 app.py --db data/lan-test.sqlite3 --host 0.0.0.0 --port 8000
+```
+
+`BINGO_PUBLIC_URL=` 讓這次測試以 HTTP 運作。`data/demo.sqlite3` 限制在本機使用，手機測試請使用上述獨立資料庫。
+
+1. 主機與手機連上可互通的同一個 Wi-Fi／區網。Mac 可到「系統設定 → Wi-Fi → 已連線網路的詳細資訊 → TCP/IP」查看 IPv4 位址，或在終端執行 `ipconfig getifaddr en0`；若 en0 沒有位址，以網路設定顯示的為準。
+2. 假設 Mac 的區網 IP 是 `192.168.1.100`，手機以 Safari／Chrome 開啟 `http://192.168.1.100:8000/`。這是示例 IP，請換成自己的。`0.0.0.0` 是監聽設定，玩家應開啟實際區網 IP。
+3. 主持人使用 `http://192.168.1.100:8000/host` 登入，按「開放領卡」；從碼表拿一組碼在手機領卡，或在後台列印專屬 QR 碼。列印與開啟投影頁都使用這個區網 IP，QR 才會指向手機可連到的網址。
+4. 電腦開 `http://192.168.1.100:8000/display` 看投影，後台抽號，確認手機同步。再測試重新整理、關頁重開及暫時斷線後恢復。
+
+主機保持供電、不要休眠，執行伺服器的終端須保持開啟；按 Ctrl+C 結束測試，之後用相同啟動指令恢復資料。IP 或連接埠改變時，手機要改用新網址登入／以原碼恢復，並重新產生 QR 券。
+
+如果手機連不上，先確認網址含 `http://` 與 `:8000`、Mac 防火牆允許 Python 傳入連線，以及 Wi-Fi 沒有阻擋裝置互相存取的訪客網路隔離。可先在主機用相同區網網址開 `/healthz`，應顯示 `{"ok": true}`，再用手機測試；主機成功、手機失敗時，接著檢查防火牆及 Wi-Fi 互通設定。Mac 防火牆操作參考 [Apple 支援](https://support.apple.com/zh-tw/guide/mac-help/mh34041/mac)。
+
+這個 HTTP 區網測試不經 Oracle VPS；正式部署的 HTTPS 步驟見 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
 ## 功能與規則
 
 - 5×5，1～49 中隨機 24 個不重複號碼，中央免費格。橫、直、兩條對角線，共 12 條可能連線。
