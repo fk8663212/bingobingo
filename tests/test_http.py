@@ -38,11 +38,13 @@ class HTTPTest(unittest.TestCase):
         conn.close(); return result
 
     def test_static_pages_csp_and_no_external_assets(self):
-        for route in ['/', '/host', '/display', '/app.js', '/style.css', '/vendor/qrcode.js']:
+        for route in ['/', '/host', '/display', '/app.js', '/style.css', '/vendor/qrcode.js', '/draw-animation.mjs', '/draw-animation.css']:
             status, body, headers = self.request(route)
             self.assertEqual(status, 200)
             self.assertIn("script-src 'self'", headers['Content-Security-Policy'])
             self.assertGreater(len(body), 0)
+            if route == '/draw-animation.mjs':
+                self.assertIn('javascript', headers['Content-Type'])
         self.assertEqual(self.request('/../manage.py')[0], 404)
         self.assertEqual(self.request('/healthz')[0], 200)
 
@@ -64,6 +66,7 @@ class HTTPTest(unittest.TestCase):
         cookie = headers['Set-Cookie'].split(';')[0]
         _, raw, _ = self.request('/api/state', cookie=cookie)
         player = json.loads(raw)
+        self.assertGreater(player['server_time'], 0)
         self.assertIn('card', player)
         self.assertNotIn('tickets', player)
         self.assertEqual(self.request('/api/admin/state', cookie=cookie)[0], 401)

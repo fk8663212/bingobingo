@@ -1,0 +1,133 @@
+/* All motion runs on the viewing device; no extra network traffic or assets. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.draw-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+}
+.draw-stage-host { height: 190px; margin: 10px 0; }
+.draw-stage-display { height: clamp(240px, 29vw, 390px); }
+/* Share lining digits between the latest number and all three history views. */
+.draw-value,
+.history-ball {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 400;
+  line-height: 1;
+}
+.draw-value {
+  position: relative;
+  /* Optical centering stays separate from the rolling/reveal transforms. */
+  top: -.02em;
+  z-index: 1;
+  min-width: 2.2ch;
+}
+.draw-stage::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  z-index: -1;
+  background: radial-gradient(ellipse, #d8b87524, transparent 65%);
+  opacity: 0;
+  pointer-events: none;
+}
+.draw-orbit {
+  position: absolute;
+  width: min(85%, 350px);
+  aspect-ratio: 1;
+  border: 1px solid #d8b87550;
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.draw-stage-host .draw-orbit { width: 176px; }
+.draw-orbit::after {
+  content: '✦';
+  position: absolute;
+  top: -0.65em;
+  left: calc(50% - 0.5em);
+  color: var(--gold);
+  font-size: 22px;
+  line-height: 1;
+}
+.draw-orbit-inner { scale: .87; border-style: dashed; border-color: #d8b87530; }
+.draw-orbit-inner::after { content: ''; }
+.draw-spark {
+  position: absolute;
+  color: #f7dfa1;
+  opacity: 0;
+  pointer-events: none;
+  font-size: clamp(20px, 2.5vw, 36px);
+}
+.draw-spark-one { top: 17%; right: 15%; }
+.draw-spark-two { bottom: 17%; left: 15%; }
+.is-rolling::before { opacity: 1; }
+.is-rolling .draw-orbit { opacity: 1; animation: draw-orbit-turn 1.25s linear infinite; }
+.is-rolling .draw-orbit-inner { animation-direction: reverse; animation-duration: 2s; }
+.is-rolling .draw-value { animation: draw-tumble 180ms ease-in-out infinite; }
+.is-revealing::before { animation: draw-glow 950ms ease-out both; }
+.is-revealing .draw-value { animation: draw-number-land 650ms cubic-bezier(.2,.8,.2,1.15) both; }
+.is-revealing .draw-orbit { animation: draw-ring-burst 900ms ease-out both; }
+.is-revealing .draw-orbit-inner { animation-delay: 90ms; }
+.is-revealing .draw-spark { animation: draw-spark-rise 850ms ease-out both; }
+.is-revealing .draw-spark-two { animation-delay: 100ms; }
+.history-ball.just-revealed { animation: draw-history-arrive 750ms ease-out both; }
+.winner-row.just-won { animation: draw-winner-arrive 750ms ease-out both; }
+
+.latest-strip { position: relative; }
+.latest-strip > span:last-child { min-width: 0; text-align: right; }
+.latest-strip.is-rolling { border-color: #d8b87580; }
+.latest-strip.is-revealing { animation: draw-history-arrive 750ms ease-out both; }
+.latest-strip.is-revealing strong { animation: draw-number-land 650ms ease-out both; }
+
+@keyframes draw-orbit-turn { to { transform: rotate(360deg); } }
+@keyframes draw-tumble {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(3px); }
+}
+@keyframes draw-number-land {
+  0% { transform: translateY(9px) scale(.88); }
+  55% { transform: translateY(-3px) scale(1.045); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes draw-ring-burst {
+  0% { opacity: .9; transform: scale(.84); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+@keyframes draw-glow {
+  0%, 30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes draw-spark-rise {
+  0% { opacity: 0; transform: translateY(12px) scale(.5) rotate(-12deg); }
+  25% { opacity: .95; }
+  100% { opacity: 0; transform: translateY(-24px) scale(1.1) rotate(12deg); }
+}
+@keyframes draw-history-arrive {
+  0% { box-shadow: 0 0 0 0 #d8b87565; }
+  100% { box-shadow: 0 0 0 9px #d8b87500; }
+}
+@keyframes draw-winner-arrive {
+  0% { opacity: .4; transform: translateY(8px); background: #d8b8751c; }
+  100% { opacity: 1; transform: translateY(0); background: transparent; }
+}
+@media (max-width: 760px) {
+  .draw-stage-display { height: 270px; }
+  .draw-stage-display .draw-orbit { width: 240px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw-stage *, .draw-stage::before, .latest-strip,
+  .latest-strip strong, .history-ball, .winner-row { animation: none !important; }
+}

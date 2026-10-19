@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#10110f"><title>晚宴賓果 · 主持人後台</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><script defer src="/vendor/qrcode.js"></script><script defer src="/app.js"></script></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#10110f"><title>晚宴賓果 · 主持人後台</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/draw-animation.css"><script defer src="/vendor/qrcode.js"></script><script type="module" src="/app.js"></script></head>
 <body data-page="host">
   <header class="topbar"><a class="brand" href="/"><span class="brand-mark">✦</span><span>晚宴賓果<small>HOST CONSOLE</small></span></a><div class="header-actions"><span class="connection" id="connection" role="status">連線中</span><a class="text-link" href="/display" target="_blank" rel="noopener">開啟投影 ↗</a><button id="logout" class="button small subtle" hidden>登出</button></div></header>
   <main class="host-shell">
@@ -11,7 +11,7 @@
       <div id="archive-banner" class="notice" hidden>正在檢視歷史紀錄。可補登領獎；抽號與領卡設定請切回最新局次。</div>
       <div class="stats-grid"><div class="stat"><span>本局玩家</span><strong id="stat-players">0</strong><small>PLAYERS</small></div><div class="stat"><span>已開號碼</span><strong id="stat-draws">0</strong><small>DRAWN / 49</small></div><div class="stat"><span>得獎名額</span><strong id="stat-winners">0 <em>/ 10</em></strong><small>WINNERS</small></div><div class="stat"><span>已完成領獎</span><strong id="stat-claimed">0</strong><small>COLLECTED</small></div></div>
       <div class="host-main-grid">
-        <section class="panel draw-panel"><div class="section-heading between"><h2>幸運開獎</h2><span class="pill" id="host-game-status">等待開獎</span></div><div class="draw-number" id="host-latest">—</div><p class="muted centered" id="host-round">每一次開獎，都是新的期待</p><button id="draw-button" class="button gold full draw-button">抽出下一個號碼 <span aria-hidden="true">✦</span></button><p class="hint centered">抽號立即存檔，系統同步判定所有卡片。</p><div class="registration-row"><div><strong>新玩家領卡</strong><p class="hint" id="registration-hint">首次開獎後自動關閉</p></div><button id="registration-button" class="button small">開放領卡</button></div></section>
+        <section class="panel draw-panel"><div class="section-heading between"><h2>幸運開獎</h2><span class="pill" id="host-game-status">等待開獎</span></div><div id="draw-stage" class="draw-stage draw-stage-host" role="img" aria-label="等待開獎"><span class="draw-orbit" aria-hidden="true"></span><span class="draw-orbit draw-orbit-inner" aria-hidden="true"></span><div class="draw-number draw-value" id="host-latest" aria-hidden="true">—</div><span class="draw-spark draw-spark-one" aria-hidden="true">✦</span><span class="draw-spark draw-spark-two" aria-hidden="true">✧</span></div><p class="muted centered" id="host-round">每一次開獎，都是新的期待</p><button id="draw-button" class="button gold full draw-button">抽出下一個號碼 <span aria-hidden="true">✦</span></button><p class="hint centered">抽號立即存檔，動畫結束後同步揭曉。</p><div class="registration-row"><div><strong>新玩家領卡</strong><p class="hint" id="registration-hint">首次開獎後自動關閉</p></div><button id="registration-button" class="button small">開放領卡</button></div></section>
         <section class="panel winners-panel"><div class="section-heading between"><h2>今晚的幸運得主</h2><span class="gold-text">✧</span></div><p class="hint">依達成回合排序。相同回合的順序為系統抽選順序。</p><div id="host-winners" class="winner-list"></div></section>
       </div>
       <section class="panel"><div class="section-heading between"><h2>開獎紀錄</h2><span class="muted" id="history-count">0 / 49</span></div><div id="draw-history" class="ball-history"></div></section>
@@ -23,5 +23,6 @@
   </main>
   <dialog id="reset-dialog"><form id="reset-form"><p class="eyebrow">A NEW ROUND</p><h2>確定要開啟下一局？</h2><p class="muted">目前局次會立即結束。舊局資料保留，所有已登記玩家換發新卡。</p><label for="reset-confirm">請輸入「開啟下一局」</label><input id="reset-confirm" autocomplete="off" required><div class="dialog-actions"><button id="cancel-reset" type="button" class="button">取消</button><button class="button gold" type="submit">確認開啟下一局</button></div></form></dialog>
   <div id="print-area" class="print-area"></div><div id="toast" class="toast" role="status" hidden></div>
+  <span id="draw-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
 </body>
 </html>

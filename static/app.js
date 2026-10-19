@@ -1,10 +1,24 @@
 'use strict';
+import {createDrawPresenter} from './draw-animation.mjs';
+
 const $ = (id) => document.getElementById(id);
 const page = document.body.dataset.page;
 let state = null, csrf = '', busy = false, archiveId = null, latestGameId = null;
 let resetGameId = null;
 let refreshing = false, refreshAgain = false, online = false, toastTimer, eventStream;
 let pendingMarks = null, savingMarks = false, lastCardSignature = '', lastTicketSignature = '';
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let rollTimer = null, revealTimer = null;
+const numberId = page === 'host' ? 'host-latest' : page === 'display' ? 'display-latest' : 'player-latest';
+const captionId = page === 'host' ? 'host-round' : page === 'display' ? 'display-round' : 'player-round';
+const stageId = page === 'player' ? 'player-draw-stage' : 'draw-stage';
+const drawPresenter = createDrawPresenter({
+  render: renderSnapshot,
+  start: startNumberRoll,
+  stop: stopNumberRoll,
+  reveal: revealNumber,
+  canAnimate: () => !reducedMotion.matches && document.visibilityState === 'visible',
+});
 let scannedCode = new URLSearchParams(location.hash.slice(1)).get('code') || '';
 if (location.hash) history.replaceState(null, '', location.pathname + location.search);
 
@@ -54,18 +68,18 @@ async function refresh() {
   refreshing = true;
   try {
     const url = page === 'host' ? '/api/admin/state' + (archiveId ? '?game=' + archiveId : '') : '/api/state';
-    state = await api(url);
-    csrf = state.csrf || '';
-    if (page === 'host') latestGameId = state.games[0].id;
-    show('demo-banner', state.demo);
+    const requestedAt = performance.now();
+    const next = await api(url);
+    const elapsedMs = performance.now() - requestedAt;
+    csrf = next.csrf || '';
+    if (page === 'host') latestGameId = next.games[0].id;
+    show('demo-banner', next.demo);
     connection(true);
     error('');
-    if (page === 'host') renderHost();
-    else if (page === 'player') renderPlayer();
-    else renderDisplay();
-    renderHistory();
+    drawPresenter.update(next, {elapsedMs});
   } catch (e) {
     if (page === 'host' && e.status === 401) {
+      drawPresenter.reset();
       state = null; csrf = ''; show('login-panel', true); show('host-console', false); show('logout', false);
       connection(true, '請登入');
     } else { error(e.message); }
@@ -73,6 +87,62 @@ async function refresh() {
     refreshing = false;
     if (refreshAgain) { refreshAgain = false; setTimeout(refresh, 100); }
   }
+}
+function renderSnapshot(next) {
+  if (state && state.game.id !== next.game.id) stopNumberRoll();
+  state = next;
+  if (page === 'host') renderHost();
+  else if (page === 'player') renderPlayer();
+  else renderDisplay();
+  renderHistory();
+  const stage = $(stageId);
+  if (stage && page !== 'player') stage.setAttribute('aria-label', state.draws.length ? '最新號碼 ' + latestNumber() : '等待開獎');
+}
+function stopNumberRoll() {
+  clearTimeout(rollTimer); clearTimeout(revealTimer);
+  rollTimer = null; revealTimer = null;
+  $(stageId)?.classList.remove('is-rolling', 'is-revealing');
+  $(stageId)?.removeAttribute('aria-busy');
+}
+function startNumberRoll({round, remainingMs, pool}) {
+  stopNumberRoll();
+  const stage = $(stageId);
+  if (!stage) return;
+  stage.classList.add('is-rolling');
+  stage.setAttribute('aria-busy', 'true');
+  if (page !== 'player') stage.setAttribute('aria-label', '第 ' + round + ' 回合開獎中');
+  text(captionId, '第 ' + round + ' 回合 · 幸運號碼即將揭曉');
+  text('draw-announcement', '第 ' + round + ' 回合開獎中');
+  if (page === 'host') { text('host-game-status', '開獎中'); hostButtons(); }
+  const started = performance.now();
+  let previous = null;
+  function tick() {
+    if (!drawPresenter.isAnimating()) return;
+    const choices = pool.length > 1 ? pool.filter(n => n !== previous) : pool;
+    previous = choices[Math.floor(Math.random() * choices.length)];
+    text(numberId, String(previous).padStart(2, '0'));
+    const progress = Math.min(1, (performance.now() - started) / remainingMs);
+    rollTimer = setTimeout(tick, 55 + 185 * progress ** 3);
+  }
+  tick();
+}
+function revealNumber(next, effects) {
+  const draw = next.draws.at(-1);
+  text('draw-announcement', '第 ' + draw.round + ' 回合，號碼 ' + draw.number);
+  if (!effects) return;
+  const stage = $(stageId);
+  stage?.classList.add('is-revealing');
+  $('draw-history').lastElementChild?.classList.add('just-revealed');
+  const newWinners = next.winners.filter(w => w.round === draw.round);
+  if (newWinners.length) {
+    const winnerList = $(page === 'host' ? 'host-winners' : 'display-winners');
+    if (winnerList) {
+      for (const row of winnerList.children) {
+        if (newWinners.some(w => String(w.player_id) === row.dataset.playerId)) row.classList.add('just-won');
+      }
+    }
+  }
+  revealTimer = setTimeout(() => { stage?.classList.remove('is-revealing'); revealTimer = null; }, 1000);
 }
 function renderHistory() {
   text('history-count', state.draws.length + ' / 49');
@@ -172,9 +242,13 @@ async function saveMarks() {
       const submitted = pendingMarks;
       await api('/api/marks', {game_id: submitted.gameId, marks: submitted.marks});
       if (state.card && state.card.id === submitted.cardId) state.card.marks = submitted.marks;
+      drawPresenter.patchPending(snapshot => {
+        if (snapshot.card?.id === submitted.cardId) snapshot.card.marks = submitted.marks;
+      });
       if (pendingMarks === submitted) { removeOutbox(submitted.cardId); pendingMarks = null; }
     }
     text('save-status', '已保存');
+    if (state.card) renderCard();
   } catch (e) {
     text('save-status', '待連線後儲存');
     if (e.status === 409 && pendingMarks) { removeOutbox(pendingMarks.cardId); pendingMarks = null; refresh(); }
@@ -191,12 +265,13 @@ function renderWinners(id, host) {
   }
   state.winners.forEach(w => {
     const row = node('div', 'winner-row');
+    row.dataset.playerId = String(w.player_id);
     const info = node('div', 'winner-name');
     info.append(node('strong', '', w.name), node('small', '', w.card_label + ' · 第 ' + w.round + ' 回合連線'));
     row.append(node('span', 'winner-rank', String(w.position).padStart(2, '0')), info);
     if (host) {
       const button = node('button', 'button small' + (w.claimed_at ? ' claimed' : ''), w.claimed_at ? '已領獎 ✓' : '標記領獎');
-      button.disabled = busy || !online;
+      button.disabled = busy || !online || drawPresenter.isAnimating();
       button.setAttribute('aria-label', w.name + (w.claimed_at ? '已領獎，點擊取消標記' : '標記為已領獎'));
       button.addEventListener('click', () => {
         if (w.claimed_at && !confirm('取消 ' + w.name + ' 的已領獎標記？')) return;
@@ -209,10 +284,12 @@ function renderWinners(id, host) {
 function hostButtons() {
   if (!state) return;
   const historical = state.game.id !== latestGameId;
-  $('draw-button').disabled = busy || !online || historical || state.game.status === 'finished' || !state.player_count;
-  text('draw-button', busy ? '處理中，請稍候…' : state.game.status === 'finished' ? '本局已結束' : '抽出下一個號碼 ✦');
-  $('registration-button').disabled = busy || !online || historical || state.game.status !== 'waiting';
-  $('reset-button').disabled = busy || !online || historical;
+  const rolling = drawPresenter.isAnimating();
+  $('draw-button').disabled = busy || rolling || !online || historical || state.game.status === 'finished' || !state.player_count;
+  text('draw-button', rolling ? '幸運號碼揭曉中…' : busy ? '處理中，請稍候…' : state.game.status === 'finished' ? '本局已結束' : '抽出下一個號碼 ✦');
+  $('registration-button').disabled = busy || rolling || !online || historical || state.game.status !== 'waiting';
+  $('reset-button').disabled = busy || rolling || !online || historical;
+  $('game-select').disabled = busy || rolling;
 }
 function renderHost() {
   show('login-panel', false); show('host-console', true); show('logout', true);
@@ -265,7 +342,7 @@ function renderAudit() {
   });
 }
 async function hostAction(path, body, message) {
-  if (busy) return;
+  if (busy || drawPresenter.isAnimating()) return;
   busy = true; hostButtons();
   try { await api(path, body); if (message) toast(message); }
   catch (e) { error(e.message); toast(e.message); }
@@ -360,8 +437,9 @@ function connectEvents() {
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') { connectEvents(); refresh(); }
-  else { eventStream?.close(); }
+  else { eventStream?.close(); drawPresenter.finish(); stopNumberRoll(); }
 });
+reducedMotion.addEventListener('change', () => { if (reducedMotion.matches) { drawPresenter.finish(); stopNumberRoll(); } });
 window.addEventListener('online', () => { connectEvents(); refresh(); });
 window.addEventListener('offline', () => connection(false, '離線 · 等待網路恢復'));
 setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 15000);

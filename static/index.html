@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#10110f"><meta name="description" content="導生晚宴手機賓果，每人一張卡，一起等候幸運號碼。">
-  <title>晚宴賓果 · 我的卡片</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css">
-  <script defer src="/app.js"></script>
+  <title>晚宴賓果 · 我的卡片</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/draw-animation.css">
+  <script type="module" src="/app.js"></script>
 </head>
 <body data-page="player">
   <header class="topbar"><a class="brand" href="/"><span class="brand-mark">✦</span><span>晚宴賓果<small>DINNER BINGO</small></span></a><span class="connection" id="connection" role="status">連線中</span></header>
@@ -23,7 +23,7 @@
     </section>
     <section id="card-panel" hidden>
       <div class="card-meta"><div><p class="eyebrow" id="card-label">YOUR LUCKY CARD</p><h2><span id="player-greeting"></span>的賓果卡</h2></div><span class="pill" id="game-badge">第 1 局</span></div>
-      <div class="latest-strip"><span>最新開獎</span><strong id="player-latest">—</strong><span id="player-round">等待主持人抽號</span></div>
+      <div class="latest-strip" id="player-draw-stage"><span>最新開獎</span><strong id="player-latest" aria-hidden="true">—</strong><span id="player-round">等待主持人抽號</span></div>
       <div class="bingo-letters" aria-hidden="true"><span>B</span><span>I</span><span>N</span><span>G</span><span>O</span></div>
       <div id="bingo-card" class="bingo-card" role="group" aria-label="5 乘 5 賓果卡"></div>
       <div class="card-legend"><span><i class="legend-called"></i>已開出</span><span><i class="legend-marked"></i>手動勾選</span><span id="save-status" role="status">勾選自動保存</span></div>
@@ -36,5 +36,6 @@
   </main>
   <footer class="footer">相聚一晚，留下一點幸運。<a href="/display">投影畫面 ↗</a></footer>
   <div id="toast" class="toast" role="status" hidden></div>
+  <span id="draw-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></span>
 </body>
 </html>

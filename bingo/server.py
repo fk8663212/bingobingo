@@ -188,6 +188,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path == '/api/state':
             player = store.session(self.token('player'), 'player')
             data = store.snapshot(player['player_id'] if player else None)
+            data['server_time'] = time.time()
             if player:
                 data['csrf'] = player['csrf']
             self.send_json(data)
@@ -199,6 +200,7 @@ class Handler(BaseHTTPRequestHandler):
             except ValueError:
                 raise Problem('局次資料無效。')
             data = store.snapshot(admin=True, game_id=gid)
+            data['server_time'] = time.time()
             data['csrf'] = admin['csrf']
             data['public_url'] = self.server.public_url
             self.send_json(data)
